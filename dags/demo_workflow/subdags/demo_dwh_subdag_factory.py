@@ -20,12 +20,73 @@ ODS_DB = Variable.get('ODS_DB')
 DWH_DB = Variable.get('DWH_DB')
 
 # DW SQLs
+DWH_DROP_DIM_TRACK_TABLE="DROP TABLE IF EXISTS dim_track"
+DWH_CREATE_DIM_TRACK_TABLE=\
+f"""
+WITH (
+    external_location = 's3://{DATALAKE_BUCKET}/dwh/dim_track/',
+    format = 'Parquet',
+    parquet_compression = 'SNAPPY'
+) AS
+SELECT
+tr.trackid as "track_id",
+tr.name, tr.composer,
+tr.milliseconds,
+tr.bytes, tr.unitprice,
+ar.name as "artist",
+al.title as "album",
+ge.name as "genre",
+me.name as "media_type"
+FROM {ODS_DB}.artist ar
+    INNER JOIN {ODS_DB}.album al ON ar.artistid = al.artistid
+    INNER JOIN {ODS_DB}.track tr ON al.albumid = tr.albumid
+    INNER JOIN {ODS_DB}.genre ge ON tr.genreid = ge.genreid
+    INNER JOIN {ODS_DB}.mediatype me ON tr.mediatypeid = me.mediatypeid
+"""
+
+DWH_DROP_DIM_CUSTOMER_TABLE="DROP TABLE IF EXISTS dim_customer"
+DWH_CREATE_DIM_CUSTOMER_TABLE=\
+f"""
+CREATE TABLE dim_customer
+WITH (
+    external_location = 's3://{DATALAKE_BUCKET}/dwh/dim_customer/',
+    format = 'Parquet',
+    parquet_compression = 'SNAPPY'
+) AS
+SELECT customerid as "customer_id", firstname as "first_name", lastname as "last_name",
+        company, address, cit, state, country, postalcode as "postal_code", phone,
+        fax, email, supportrepid as "support_rep_id"
+FROM {ODS_DB}.customer
+"""
+
+DWH_DROP_DIM_INVOICE_TABLE="DROP TABLE IF EXISTS dim_invoice"
+DWH_CREATE_DIM_INVOICE_TABLE=\
+f"""
+CREATE TABLE dim_invoice
+WITH (
+    external_location = 's3://{DATALAKE_BUCKET}/dwh/dim_invoice/',
+    format = 'Parquet',
+    parquet_compression = 'SNAPPY'
+) AS
+SELECT customerid as "customer_id", firstname as "first_name", lastname as "last_name",
+        company, address, cit, state, country, postalcode as "postal_code", phone,
+        fax, email, supportrepid as "support_rep_id"
+FROM {ODS_DB}.customer
+"""
 
 
-table_list = []
+table_list = ['dim_track', 'dim_customer', 'dim_invoice']
 
-drop_sql_dict = {}
-create_sql_dict = {}
+drop_sql_dict = {
+    'dim_track': DWH_DROP_DIM_TRACK_TABLE, \
+    'dim_customer': DWH_DROP_DIM_CUSTOMER_TABLE, \
+    'dim_invoice': DWH_DROP_DIM_INVOICE_TABLE
+}
+create_sql_dict = {
+    'dim_track': DWH_CREATE_DIM_TRACK_TABLE, \
+    'dim_customer': DWH_CREATE_DIM_CUSTOMER_TABLE, \
+    'dim_invoice': DWH_CREATE_DIM_INVOICE_TABLE
+}
 
 # EMR Cluster configuration
 JOB_FLOW_OVERRIDES = {
@@ -90,7 +151,6 @@ EMR_STEPS = [
 ]
 
 # Helper Function: Returns DAG that create DW dimension tables
-
 def create_dwh_dim_table_subdag(parent_dag_name, child_dag_name, default_args):
     with DAG(
         dag_id='%s.%s' % (parent_dag_name, child_dag_name),
@@ -129,7 +189,7 @@ def create_dwh_dim_table_subdag(parent_dag_name, child_dag_name, default_args):
 
     return dag
 
-#
+# Helper Function: Returns DAG that create DW fact table
 def create_dwh_fact_table_subdag(parent_dag_name, child_dag_name, default_args):
     with DAG(
         dag_id='%s.%s' % (parent_dag_name, child_dag_name),

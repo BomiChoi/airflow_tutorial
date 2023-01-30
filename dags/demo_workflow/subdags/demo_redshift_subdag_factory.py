@@ -1,11 +1,5 @@
 from airflow.models import DAG
 from airflow.models import Variable
-from airflow.providers.amazon.aws.operators.s3_delete_objects import S3DeleteObjectsOperator
-from airflow.providers.amazon.aws.operators.athena import AWSAthenaOperator
-from airflow.providers.amazon.aws.operators.emr_add_steps import EmrAddStepsOperator
-from airflow.providers.amazon.aws.operators.emr_create_job_flow import EmrCreateJobFlowOperator
-from airflow.providers.amazon.aws.operators.emr_terminate_job_flow import EmrTerminateJobFlowOperator
-from airflow.providers.amazon.aws.sensors.emr_step import EmrStepSensor
 from airflow.providers.postgres.operators.postgres import PostgresOperator
 from airflow.providers.amazon.aws.transfers.s3_to_redshift import S3ToRedshiftOperator
 
@@ -18,7 +12,7 @@ DATALAKE_BUCKET = Variable.get('DATALAKE_BUCKET')
 DWH_DB = Variable.get('DWH_DB')
 DWH_SCHEMA = Variable.get('DWH_SCHEMA')
 
-table_list = []
+table_list = ['dim_track', 'dim_customer', 'dim_invoice', 'dim_date', 'fact_invoice']
 
 # Helper Function: Returns DAG that load S3 data to Redshift
 def load_redshift_table_subdag(parent_dag_name, child_dag_name, default_args):
