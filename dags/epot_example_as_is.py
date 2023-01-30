@@ -11,7 +11,7 @@ from airflow.models.baseoperator import chain
 KST = pendulum.timezone("Asia/Seoul")
 
 with DAG(
-    dag_id="example_as_is", 
+    dag_id="epot_example_as_is", 
     schedule_interval=None, 
     start_date=datetime(2023, 1, 19, 00, tzinfo=KST)
 ) as dag:
